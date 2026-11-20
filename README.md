@@ -1,235 +1,101 @@
-# Self-hosted AI starter kit
+# NIST Incident Response Q&A Agent
 
-**Self-hosted AI Starter Kit** is an open-source Docker Compose template designed to swiftly initialize a comprehensive local AI and low-code development environment.
+A local, free question-answering agent that answers from one public document: **NIST SP 800-61 Rev. 3**, the incident response guide. I built both workflows by hand in n8n. Everything runs on my own computer, with no paid services and no API keys.
 
-![n8n.io - Screenshot](https://raw.githubusercontent.com/n8n-io/self-hosted-ai-starter-kit/main/assets/n8n-demo.gif)
+This is a learning project. The known issues and failures are written down below on purpose.
 
-Curated by <https://github.com/n8n-io>, it combines the self-hosted n8n
-platform with a curated list of compatible AI products and components to
-quickly get started with building self-hosted AI workflows.
+## Why I built it
 
-> [!TIP]
-> [Read the announcement](https://blog.n8n.io/self-hosted-ai/)
+I work in cloud and application support. I wanted hands-on practice with retrieval-augmented generation (RAG) and AI agents that use tools, on a document that matters in my field.
 
-### What’s included
+## How it works
 
-✅ [**Self-hosted n8n**](https://n8n.io/) - Low-code platform with over 400
-integrations and advanced AI components
+Two n8n workflows:
 
-✅ [**Ollama**](https://ollama.com/) - Cross-platform LLM platform to install
-and run the latest local LLMs
+```
+Workflow 1: Ingest (run once)
+Manual Trigger -> HTTP Request (download the PDF) -> Qdrant Vector Store (insert)
+                                                      |- Embeddings Ollama (nomic-embed-text)
+                                                      |- Default Data Loader (PDF, split pages)
+                                                           |- Recursive Character Text Splitter (overlap 200)
 
-✅ [**Qdrant**](https://qdrant.tech/) - Open-source, high performance vector
-store with an comprehensive API
-
-✅ [**PostgreSQL**](https://www.postgresql.org/) -  Workhorse of the Data
-Engineering world, handles large amounts of data safely.
-
-### What you can build
-
-⭐️ **AI Agents** for scheduling appointments
-
-⭐️ **Summarize Company PDFs** securely without data leaks
-
-⭐️ **Smarter Slack Bots** for enhanced company communications and IT operations
-
-⭐️ **Private Financial Document Analysis** at minimal cost
-
-## Installation
-
-### Cloning the Repository
-
-```bash
-git clone https://github.com/n8n-io/self-hosted-ai-starter-kit.git
-cd self-hosted-ai-starter-kit
-cp .env.example .env # you should update secrets and passwords inside
+Workflow 2: Chat
+Chat Trigger -> AI Agent
+                |- Chat model: Ollama (qwen2.5:3b)
+                |- Memory: Simple Memory
+                |- Tool: search_nist_guide (Qdrant, same embeddings)
+                |- Tool: searxng-search (local SearXNG web search)
 ```
 
-### Running n8n using Docker Compose
+The agent is told to search the guide first, answer only from the excerpts, and name the section or page. If the guide has no answer, it should say "Not in the NIST guide" and fall back to the web.
 
-#### For Nvidia GPU users
+| Part | What it does |
+|---|---|
+| n8n | Workflow and agent builder |
+| Ollama | Runs the models locally: `qwen2.5:3b` (chat), `nomic-embed-text` (embeddings) |
+| Qdrant | Vector database. The guide is stored as 138 chunks |
+| SearXNG | Self-hosted web search, bound to `127.0.0.1` only |
+| Postgres | n8n's own database |
 
-```bash
-git clone https://github.com/n8n-io/self-hosted-ai-starter-kit.git
-cd self-hosted-ai-starter-kit
-cp .env.example .env # you should update secrets and passwords inside
-docker compose --profile gpu-nvidia up
-```
+## What works
 
-> [!NOTE]
-> If you have not used your Nvidia GPU with Docker before, please follow the
-> [Ollama Docker instructions](https://docs.ollama.com/docker).
+- Questions the guide covers get answers from the guide, with a section or page reference.
+- Ingest is a single run and the PDF is downloaded straight from NIST.
+- Everything is free and runs locally.
 
-### For AMD GPU users on Linux
+## Known issues
 
-```bash
-git clone https://github.com/n8n-io/self-hosted-ai-starter-kit.git
-cd self-hosted-ai-starter-kit
-cp .env.example .env # you should update secrets and passwords inside
-docker compose --profile gpu-amd up
-```
+- **`llama3.2` broke tool calls.** It wrote the tool call as plain, broken JSON text (`{"name":"search_nist_guide","parameters{"}`) instead of calling the tool. Switching to `qwen2.5:3b` fixed it.
+- **A tool name mismatch made the model fake an answer.** When the system message named a tool that did not exist, the model did not fail. It wrote "From the web:" and reused the guide's own link. Lesson: check tool names exactly, and check the execution log, not just the reply.
+- **The web search tool is not called.** `qwen2.5:3b` never calls `searxng-search`. When the guide has no answer, it says "Not in the NIST guide" and gives a working search link for the question. So you get a page of results, not a picked-out answer. The SearXNG tool's built-in description says it is for "current events", which may be part of the reason. A bigger model or an HTTP Request tool with my own description might fix it. Not tried yet.
+- **Page numbers are PDF pages.** Qdrant stores the PDF page (for example 13), while the guide prints a different page number (5) on the same page.
+- **The web can be out of date.** One of the top web results for "NIST incident response" was the old guide (SP 800-61 **Rev. 2**).
+- **Small model, small machine.** Docker had about 8 GB of memory, so I stayed with 3B models.
 
-#### For Mac / Apple Silicon users
+## Test results
 
-If you’re using a Mac with an M1 or newer processor, you can't expose your GPU
-to the Docker instance, unfortunately. There are two options in this case:
+The 10 + 3 question test table (10 questions from the guide, 3 that are not in it) is coming next. Failures will stay in the table.
 
-1. Run the starter kit fully on CPU, like in the section "For everyone else"
-   below
-2. Run Ollama on your Mac for faster inference, and connect to that from the
-   n8n instance
+## Run it yourself
 
-If you want to run Ollama on your mac, check the
-[Ollama homepage](https://ollama.com/)
-for installation instructions, and run the starter kit as follows:
+You need Docker Desktop. These steps are for a computer without an Nvidia GPU.
 
-```bash
-git clone https://github.com/n8n-io/self-hosted-ai-starter-kit.git
-cd self-hosted-ai-starter-kit
-cp .env.example .env # you should update secrets and passwords inside
-docker compose up
-```
+1. Clone the repo and create your `.env`:
+   ```
+   git clone https://github.com/MaitreyeeMulay/RAG_1_Proj.git
+   cd RAG_1_Proj
+   cp .env.example .env
+   ```
+   Replace every placeholder in `.env` with your own long random values.
+   Note: the demo credentials from the original starter kit only work with its default encryption key. With your own key you set up the credentials yourself (step 5).
 
-##### For Mac users running OLLAMA locally
+2. Start everything:
+   ```
+   docker compose --profile cpu up -d
+   ```
 
-If you're running OLLAMA locally on your Mac (not in Docker), you need to modify the OLLAMA_HOST environment variable
+3. Pull the models:
+   ```
+   docker exec ollama ollama pull qwen2.5:3b
+   docker exec ollama ollama pull nomic-embed-text
+   ```
 
-1. Set OLLAMA_HOST to `host.docker.internal:11434` in your .env file. 
-2. Additionally, after you see "Editor is now accessible via: <http://localhost:5678/>":
+4. Open n8n at http://localhost:5678 and create your owner account.
 
-    1. Head to <http://localhost:5678/home/credentials>
-    2. Click on "Local Ollama service"
-    3. Change the base URL to "http://host.docker.internal:11434/"
+5. Create three credentials in n8n:
+   - Ollama: Base URL `http://ollama:11434`, no API key
+   - Qdrant: URL `http://qdrant:6333`, no API key
+   - SearXNG: API URL `http://searxng:8080`
 
-#### For everyone else
+   Use the container names, not `localhost`. Inside Docker, `localhost` points at the n8n container itself.
 
-```bash
-git clone https://github.com/n8n-io/self-hosted-ai-starter-kit.git
-cd self-hosted-ai-starter-kit
-cp .env.example .env # you should update secrets and passwords inside
-docker compose --profile cpu up
-```
+6. Import `Workflows/Ingest.json` and `Workflows/chat.json`, and pick your credentials in each node.
 
-## ⚡️ Quick start and usage
+7. Run **Ingest** once. Running it again adds duplicate chunks.
 
-The core of the Self-hosted AI Starter Kit is a Docker Compose file, pre-configured with network and storage settings, minimizing the need for additional installations.
-After completing the installation steps above, simply follow the steps below to get started.
+8. Open **chat** and click **Open chat**.
 
-1. Open <http://localhost:5678/> in your browser to set up n8n. You’ll only
-   have to do this once.
-2. Open the included workflow:
-   <http://localhost:5678/workflow/srOnR8PAY3u4RSwb>
-3. Click the **Chat** button at the bottom of the canvas, to start running the workflow.
-4. If this is the first time you’re running the workflow, you may need to wait
-   until Ollama finishes downloading Llama3.2. You can inspect the docker
-   console logs to check on the progress.
+## Credits
 
-To open n8n at any time, visit <http://localhost:5678/> in your browser.
-
-With your n8n instance, you’ll have access to over 400 integrations and a
-suite of basic and advanced AI nodes such as
-[AI Agent](https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.agent/),
-[Text classifier](https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.text-classifier/),
-and [Information Extractor](https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.information-extractor/)
-nodes. To keep everything local, just remember to use the Ollama node for your
-language model and Qdrant as your vector store.
-
-> [!NOTE]
-> This starter kit is designed to help you get started with self-hosted AI
-> workflows. While it’s not fully optimized for production environments, it
-> combines robust components that work well together for proof-of-concept
-> projects. You can customize it to meet your specific needs
-
-## Upgrading
-
-* ### For Nvidia GPU setups:
-
-```bash
-docker compose --profile gpu-nvidia pull
-docker compose create && docker compose --profile gpu-nvidia up
-```
-
-* ### For Mac / Apple Silicon users
-
-```bash
-docker compose pull
-docker compose create && docker compose up
-```
-
-* ### For Non-GPU setups:
-
-```bash
-docker compose --profile cpu pull
-docker compose create && docker compose --profile cpu up
-```
-
-## 👓 Recommended reading
-
-n8n is full of useful content for getting started quickly with its AI concepts
-and nodes. If you run into an issue, go to [support](#support).
-
-- [AI agents for developers: from theory to practice with n8n](https://blog.n8n.io/ai-agents/)
-- [Tutorial: Build an AI workflow in n8n](https://docs.n8n.io/advanced-ai/intro-tutorial/)
-- [Langchain Concepts in n8n](https://docs.n8n.io/advanced-ai/langchain/langchain-n8n/)
-- [Demonstration of key differences between agents and chains](https://docs.n8n.io/advanced-ai/examples/agent-chain-comparison/)
-- [What are vector databases?](https://docs.n8n.io/advanced-ai/examples/understand-vector-databases/)
-
-## 🎥 Video walkthrough
-
-- [Installing and using Local AI for n8n](https://www.youtube.com/watch?v=xz_X2N-hPg0)
-
-## 🛍️ More AI templates
-
-For more AI workflow ideas, visit the [**official n8n AI template
-gallery**](https://n8n.io/workflows/categories/ai/). From each workflow,
-select the **Use workflow** button to automatically import the workflow into
-your local n8n instance.
-
-### Learn AI key concepts
-
-- [AI Agent Chat](https://n8n.io/workflows/1954-ai-agent-chat/)
-- [AI chat with any data source (using the n8n workflow too)](https://n8n.io/workflows/2026-ai-chat-with-any-data-source-using-the-n8n-workflow-tool/)
-- [Chat with OpenAI Assistant (by adding a memory)](https://n8n.io/workflows/2098-chat-with-openai-assistant-by-adding-a-memory/)
-- [Use an open-source LLM (via Hugging Face)](https://n8n.io/workflows/1980-use-an-open-source-llm-via-huggingface/)
-- [Chat with PDF docs using AI (quoting sources)](https://n8n.io/workflows/2165-chat-with-pdf-docs-using-ai-quoting-sources/)
-- [AI agent that can scrape webpages](https://n8n.io/workflows/2006-ai-agent-that-can-scrape-webpages/)
-
-### Local AI templates
-
-- [Tax Code Assistant](https://n8n.io/workflows/2341-build-a-tax-code-assistant-with-qdrant-mistralai-and-openai/)
-- [Breakdown Documents into Study Notes with MistralAI and Qdrant](https://n8n.io/workflows/2339-breakdown-documents-into-study-notes-using-templating-mistralai-and-qdrant/)
-- [Financial Documents Assistant using Qdrant and](https://n8n.io/workflows/2335-build-a-financial-documents-assistant-using-qdrant-and-mistralai/) [Mistral.ai](http://mistral.ai/)
-- [Recipe Recommendations with Qdrant and Mistral](https://n8n.io/workflows/2333-recipe-recommendations-with-qdrant-and-mistral/)
-
-## Tips & tricks
-
-### Accessing local files
-
-The self-hosted AI starter kit will create a shared folder (by default,
-located in the same directory) which is mounted to the n8n container and
-allows n8n to access files on disk. This folder within the n8n container is
-located at `/data/shared` -- this is the path you’ll need to use in nodes that
-interact with the local filesystem.
-
-**Nodes that interact with the local filesystem**
-
-- [Read/Write Files from Disk](https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.filesreadwrite/)
-- [Local File Trigger](https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.localfiletrigger/)
-- [Execute Command](https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.executecommand/)
-
-## 📜 License
-
-This project is licensed under the Apache License 2.0 - see the
-[LICENSE](LICENSE) file for details.
-
-## 💬 Support
-
-Join the conversation in the [n8n Forum](https://community.n8n.io/), where you
-can:
-
-- **Share Your Work**: Show off what you’ve built with n8n and inspire others
-  in the community.
-- **Ask Questions**: Whether you’re just getting started or you’re a seasoned
-  pro, the community and our team are ready to support with any challenges.
-- **Propose Ideas**: Have an idea for a feature or improvement? Let us know!
-  We’re always eager to hear what you’d like to see next.
+- Built on the [n8n self-hosted AI starter kit](https://github.com/n8n-io/self-hosted-ai-starter-kit) (Apache 2.0, see `LICENSE`).
+- Source document: [NIST SP 800-61 Rev. 3](https://csrc.nist.gov/pubs/sp/800/61/r3/final), *Incident Response Recommendations and Considerations for Cybersecurity Risk Management*, NIST, April 2025.
