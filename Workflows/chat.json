@@ -18,7 +18,7 @@
     {
       "parameters": {
         "options": {
-          "systemMessage": "You answer questions about incident response.\n1. Always call search_nist_guide first.\n2. If the excerpts answer it, answer only from them and name the section or page.\n3. If not, call searxng-search. Start the answer with\n   \"Not in the NIST guide. From the web:\" and list the source URLs.\n4. Never answer from your own knowledge.\n5. Never write a URL that did not come from a tool result.\nKeep answers short."
+          "systemMessage": "You answer questions about incident response.\n1. Always call search_nist_guide first. When you call search_nist_guide, put the question in the \"input\" field.\n2. If the excerpts answer it, answer only from them and name the section or page.\n3. If not, call searxng-search. Start the answer with\n   \"Not in the NIST guide. From the web:\" and list the source URLs.\n4. Never answer from your own knowledge.\n5. Never write a URL that did not come from a tool result.\nKeep answers short."
         }
       },
       "type": "@n8n/n8n-nodes-langchain.agent",
@@ -203,7 +203,7 @@
     "executionOrder": "v1",
     "binaryMode": "separate"
   },
-  "versionId": "cf92a02e-70b5-4dba-b1f1-afc3ffd4628a",
+  "versionId": "9a96d242-c4cf-4e66-868d-81077c7f1e77",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "8948cb6d1f0c65bf149947d49ef560a45d2a697709ad46035765c4fb9c3734ca"
