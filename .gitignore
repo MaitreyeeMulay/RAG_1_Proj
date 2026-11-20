@@ -1,1 +1,16 @@
+# secrets
 .env
+.env.*
+!.env.example
+
+# runtime data shared with the n8n container
+shared/
+
+# never commit n8n credential exports
+*credential*.json
+!n8n/demo-data/credentials/*.json
+
+# OS / editor junk
+.DS_Store
+Thumbs.db
+.vscode/

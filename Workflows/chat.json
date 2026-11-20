@@ -1,0 +1,182 @@
+{
+  "name": "chat",
+  "nodes": [
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.5,
+      "position": [
+        0,
+        0
+      ],
+      "id": "0c3fe45c-43a9-4375-b25e-99510b338728",
+      "name": "When chat message received",
+      "webhookId": "5cb52313-3898-4280-bae9-5de88017b844"
+    },
+    {
+      "parameters": {
+        "options": {
+          "systemMessage": "You answer questions about NIST SP 800-61r3 only.\nAlways call search_nist_guide first.\nAnswer only from the returned excerpts. Name the section or page.\nIf the excerpts do not contain the answer, reply exactly:\n\"I could not find that in the guide\"\nKeep answers short."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        224,
+        0
+      ],
+      "id": "b55efd1b-db87-441c-8b2d-9c687bc77231",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": "qwen2.5:3b",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
+      "typeVersion": 1,
+      "position": [
+        96,
+        208
+      ],
+      "id": "9c1390d5-e5d9-42f0-9968-c2120e23b475",
+      "name": "Ollama Chat Model",
+      "credentials": {
+        "ollamaApi": {
+          "id": "8pBicRepZ89208Wn",
+          "name": "Ollama account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.4,
+      "position": [
+        240,
+        208
+      ],
+      "id": "4b60651a-ede3-4aeb-bd08-af759ac8a5a7",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "model": "nomic-embed-text:latest"
+      },
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOllama",
+      "typeVersion": 1,
+      "position": [
+        320,
+        368
+      ],
+      "id": "dc1815c9-c06a-4151-afa5-39fb474b1f20",
+      "name": "Embeddings Ollama",
+      "credentials": {
+        "ollamaApi": {
+          "id": "8pBicRepZ89208Wn",
+          "name": "Ollama account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "retrieve-as-tool",
+        "toolDescription": "Searches through nist guide\n",
+        "qdrantCollection": {
+          "__rl": true,
+          "value": "nist_800_61r3",
+          "mode": "list",
+          "cachedResultName": "nist_800_61r3"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreQdrant",
+      "typeVersion": 1.4,
+      "position": [
+        320,
+        160
+      ],
+      "id": "d1686c68-d596-450a-bb94-6ec1d3f77640",
+      "name": "search_nist_guide",
+      "credentials": {
+        "qdrantApi": {
+          "id": "g6xgk243Cdu0mfj3",
+          "name": "Qdrant account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ollama Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings Ollama": {
+      "ai_embedding": [
+        [
+          {
+            "node": "search_nist_guide",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "search_nist_guide": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "d8372a67-8df4-4c96-b749-0d59c5ea9f77",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "8948cb6d1f0c65bf149947d49ef560a45d2a697709ad46035765c4fb9c3734ca"
+  },
+  "nodeGroups": [],
+  "id": "8iFA1NESACBLJcHP",
+  "tags": []
+}
