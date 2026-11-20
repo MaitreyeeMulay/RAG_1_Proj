@@ -18,7 +18,7 @@
     {
       "parameters": {
         "options": {
-          "systemMessage": "You answer questions about NIST SP 800-61r3 only.\nAlways call search_nist_guide first.\nAnswer only from the returned excerpts. Name the section or page.\nIf the excerpts do not contain the answer, reply exactly:\n\"I could not find that in the guide\"\nKeep answers short."
+          "systemMessage": "You answer questions about incident response.\n1. Always call search_nist_guide first.\n2. If the excerpts answer it, answer only from them and name the section or page.\n3. If not, call searxng-search. Start the answer with\n   \"Not in the NIST guide. From the web:\" and list the source URLs.\n4. Never answer from your own knowledge.\n5. Never write a URL that did not come from a tool result.\nKeep answers short."
         }
       },
       "type": "@n8n/n8n-nodes-langchain.agent",
@@ -68,8 +68,8 @@
       "type": "@n8n/n8n-nodes-langchain.embeddingsOllama",
       "typeVersion": 1,
       "position": [
-        320,
-        368
+        496,
+        352
       ],
       "id": "dc1815c9-c06a-4151-afa5-39fb474b1f20",
       "name": "Embeddings Ollama",
@@ -95,8 +95,8 @@
       "type": "@n8n/n8n-nodes-langchain.vectorStoreQdrant",
       "typeVersion": 1.4,
       "position": [
-        320,
-        160
+        496,
+        192
       ],
       "id": "d1686c68-d596-450a-bb94-6ec1d3f77640",
       "name": "search_nist_guide",
@@ -104,6 +104,27 @@
         "qdrantApi": {
           "id": "g6xgk243Cdu0mfj3",
           "name": "Qdrant account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {
+          "numResults": 3
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolSearXng",
+      "typeVersion": 1,
+      "position": [
+        384,
+        208
+      ],
+      "id": "5589000e-8142-4c47-a897-b82aed48214f",
+      "name": "searxng-search",
+      "credentials": {
+        "searXngApi": {
+          "id": "GbhBetmqH8xcXzd1",
+          "name": "SearXNG account"
         }
       }
     }
@@ -164,6 +185,17 @@
           }
         ]
       ]
+    },
+    "searxng-search": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "active": true,
@@ -171,7 +203,7 @@
     "executionOrder": "v1",
     "binaryMode": "separate"
   },
-  "versionId": "d8372a67-8df4-4c96-b749-0d59c5ea9f77",
+  "versionId": "cf92a02e-70b5-4dba-b1f1-afc3ffd4628a",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "8948cb6d1f0c65bf149947d49ef560a45d2a697709ad46035765c4fb9c3734ca"

@@ -1,0 +1,6 @@
+use_default_settings: true
+server:
+  limiter: false        # only used by n8n on your own machine
+  image_proxy: false
+search:
+  formats: [html, json] # n8n needs json
