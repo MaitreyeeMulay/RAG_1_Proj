@@ -54,7 +54,16 @@ The agent is told to search the guide first, answer only from the excerpts, and 
 
 ## Test results
 
-The 10 + 3 question test table (10 questions from the guide, 3 that are not in it) is coming next. Failures will stay in the table.
+13 questions: 10 answered in the guide, 3 not in it. Full tables, with failures kept, are in [tests/RESULTS.md](tests/RESULTS.md).
+
+| Test run | Guide questions | Not-in-guide questions |
+|---|---|---|
+| 1 (tool argument error) | 0 of 9 pass | 1 partial, 2 fail |
+| 2 (prompt fix, new session per question) | 3 of 5 pass | 1 partial |
+
+Run 2 was stopped early because each answer took one to two minutes on CPU.
+
+To repeat the test: `python tests/run_questions.py` (needs public chat switched on in the Chat Trigger while it runs), then `python tests/collect_results.py --from-id <first run id>`.
 
 ## Run it yourself
 
